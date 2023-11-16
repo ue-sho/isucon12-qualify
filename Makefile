@@ -97,9 +97,6 @@ git-setup:
 	git config --global user.email "isucon@example.com"
 	git config --global user.name "isucon"
 
-	# deploykeyの作成
-	ssh-keygen -t ed25519
-
 .PHONY: set-as-s1
 set-as-s1:
 	echo "" >> $(ENV_FILE)
