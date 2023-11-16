@@ -6,7 +6,8 @@ env
 !s2/home/isucon/env
 !s3/home/isucon/env
 
-/backup
+backup/
+isucon12-qualify/
 
 bench/
 blackauth/
