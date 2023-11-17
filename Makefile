@@ -23,30 +23,38 @@ restart:
 	sudo systemctl restart $(SERVICE_NAME)
 
 .PHONY: bench
-bench: before log
+bench: check-server-id deploy-conf log-trancate restart watch-service-log
 
-.PHONY: log
-log:
+.PHONY: deploy-conf
+deploy-conf: deploy-db-conf deploy-nginx-conf deploy-env
+
+.PHONY: watch-service-log
+watch-service-log:
 	sudo journalctl -u $(SERVICE_NAME) -n10 -f
-
-.PHONY: maji
-bench: before restart
 
 .PHONY: analyse
 analyse: slow alp
 
-.PHONY: before
-before:
+.PHONY: analyse-slack
+analyse: slow-slack alp-slack
+
+.PHONY: log-trancate
+log-trancate:
 	$(eval when := $(shell date "+%s"))
 	mkdir -p ~/logs/$(when)
 	sudo touch $(NGINX_LOG);
 	sudo mv -f $(NGINX_LOG) ~/logs/$(when)/ ;
 	sudo touch $(MYSQL_LOG);
 	sudo mv -f $(MYSQL_LOG) ~/logs/$(when)/ ;
-	sudo cp -rf $(PROJECT_ROOT)/mysql /etc/mysql
-	sudo cp -rf $(PROJECT_ROOT)/nginx /etc/nginx
 	sudo systemctl restart nginx
 	sudo systemctl restart mysql
+
+.PHONY: access-db
+access-db:
+	mysql -h $(ISUCON_DB_HOST) -P $(ISUCON_DB_PORT) -u $(ISUCON_DB_USER) -p$(ISUCON_DB_PASSWORD) $(ISUCON_DB_NAME)
+
+.PHONY: setup
+setup: install-tool get-db-conf get-nginx-conf git-setup get-env
 
 .PHONY: slow
 slow:
@@ -63,13 +71,6 @@ alp:
 .PHONY: alp-slack
 alp-slack:
 	sudo alp ltsv --file=$(NGINX_LOG) --config=/home/isucon/tool/alp/config.yml > $(ALP_LOG) | slack_notify $(ALP_LOG)
-
-.PHONY: access-db
-access-db:
-	mysql -h $(ISUCON_DB_HOST) -P $(ISUCON_DB_PORT) -u $(ISUCON_DB_USER) -p$(ISUCON_DB_PASSWORD) $(ISUCON_DB_NAME)
-
-.PHONY: setup
-setup: install-tool get-db-conf get-nginx-conf git-setup get-env
 
 .PHONY: install-tool
 install-tool:
@@ -114,30 +115,36 @@ set-as-s3:
 
 .PHONY: get-db-conf
 get-db-conf:
-	mkdir -p /home/isucon/$(SERVER_ID)/etc
+	mkdir -p /home/isucon/$(SERVER_ID)/etc/mysql
 	mkdir -p /home/isucon/backup/etc
 	sudo cp -r /etc/mysql /home/isucon/backup/etc
-	sudo mkdir -p /home/isucon/$(SERVER_ID)/etc/mysql/conf.d
-	sudo mkdir -p /home/isucon/$(SERVER_ID)/etc/mysql/mysql.conf.d
-	sudo ln /etc/mysql/conf.d/mysql.cnf /home/isucon/$(SERVER_ID)/etc/mysql/conf.d/mysql.cnf
-	sudo ln /etc/mysql/conf.d/mysqldump.cnf /home/isucon/$(SERVER_ID)/etc/mysql/conf.d/mysqldump.cnf
-	sudo ln /etc/mysql/mysql.conf.d/mysql.cnf /home/isucon/$(SERVER_ID)/etc/mysql/mysql.conf.d/mysql.cnf
-	sudo ln /etc/mysql/mysql.conf.d/mysqld.cnf /home/isucon/$(SERVER_ID)/etc/mysql/mysql.conf.d/mysqld.cnf
-	sudo chmod 755 -R /home/isucon/$(SERVER_ID)/etc/mysql
+	sudo cp -R $(DB_PATH)/* ~/$(SERVER_ID)/etc/mysql
+	sudo chown $(USER) -R ~/$(SERVER_ID)/etc/mysql
 
 .PHONY: get-nginx-conf
 get-nginx-conf:
-	mkdir -p /home/isucon/$(SERVER_ID)/etc
+	mkdir -p /home/isucon/$(SERVER_ID)/etc/nginx
 	mkdir -p /home/isucon/backup/etc
 	cp -r /etc/nginx /home/isucon/backup/etc
-	sudo mv /etc/nginx /home/isucon/$(SERVER_ID)/etc
-	sudo ln -s /home/isucon/$(SERVER_ID)/etc/nginx /etc/nginx
-	sudo chmod 775 -R /home/isucon/$(SERVER_ID)/etc/nginx
+	sudo cp -R $(NGINX_PATH)/* ~/$(SERVER_ID)/etc/nginx
+	sudo chown $(USER) -R ~/$(SERVER_ID)/etc/nginx
 
 .PHONY: get-env
 get-env:
 	mkdir -p  ~/$(SERVER_ID)/home/isucon
 	ln ~/$(ENV_FILE) ~/$(SERVER_ID)/home/isucon/$(ENV_FILE)
+
+.PHONY: deploy-db-conf
+deploy-db-conf:
+	sudo cp -R ~/$(SERVER_ID)/etc/mysql/* $(DB_PATH)
+
+.PHONY: deploy-nginx-conf
+deploy-nginx-conf:
+	sudo cp -R ~/$(SERVER_ID)/etc/nginx/* $(NGINX_PATH)
+
+.PHONY: deploy-env
+deploy-envsh:
+	cp ~/$(SERVER_ID)/home/isucon/$(ENV_FILE) ~/$(ENV_FILE)
 
 .PHONY: check-server-id
 check-server-id:
