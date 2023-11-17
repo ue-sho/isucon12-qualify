@@ -36,7 +36,7 @@ watch-service-log:
 analyse: slow alp
 
 .PHONY: analyse-slack
-analyse: slow-slack alp-slack
+analyse-slack: slow-slack alp-slack
 
 .PHONY: log-trancate
 log-trancate:
@@ -62,7 +62,8 @@ slow:
 
 .PHONY: slow-slack
 slow-slack:
-	sudo pt-query-digest $(MYSQL_LOG) > $(PT_QUERY_LOG) | slack_notify $(PT_QUERY_LOG)
+	sudo pt-query-digest $(MYSQL_LOG) > $(PT_QUERY_LOG)
+	notify_slack $(PT_QUERY_LOG)
 
 .PHONY: alp
 alp:
@@ -70,7 +71,8 @@ alp:
 
 .PHONY: alp-slack
 alp-slack:
-	sudo alp ltsv --file=$(NGINX_LOG) --config=/home/isucon/tool/alp/config.yml > $(ALP_LOG) | slack_notify $(ALP_LOG)
+	sudo alp ltsv --file=$(NGINX_LOG) --config=/home/isucon/tool/alp/config.yml > $(ALP_LOG)
+	notify_slack $(ALP_LOG)
 
 .PHONY: install-tool
 install-tool:
@@ -85,7 +87,7 @@ install-tool:
 	wget https://github.com/tkuchiki/alp/releases/download/v1.0.11/alp_linux_amd64.zip
 	unzip alp_linux_amd64.zip
 	sudo mv alp /usr/local/bin/
-	# slack_notify
+	# notify_slack
 	wget https://github.com/catatsuy/notify_slack/releases/download/v0.4.14/notify_slack-linux-amd64.tar.gz
 	tar zxvf notify_slack-linux-amd64.tar.gz
 	sudo mv notify_slack /usr/local/bin/
